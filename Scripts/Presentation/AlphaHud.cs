@@ -14,7 +14,8 @@ public partial class AlphaHud : CanvasLayer
     private PanelContainer _modal = null!;
     private VBoxContainer _content = null!;
     private Label _heading = null!, _status = null!, _place = null!, _objective = null!, _toast = null!, _dialogue = null!;
-    private Button _interact = null!;
+    private Button _interact = null!, _loadingButton = null!;
+    private Label _walkHint = null!, _movement = null!;
     private string _section = "";
     private float _refresh, _toastTime;
     private readonly Color _ink = new("eeddb8"), _muted = new("a7bfba"), _gold = new("d4b477");
@@ -28,7 +29,7 @@ public partial class AlphaHud : CanvasLayer
         var topRow = Row(top, 20);
         var title = new VBoxContainer(); topRow.AddChild(title);
         title.AddChild(Text("Island Glow", 28, _ink, true));
-        title.AddChild(Text("THE LIVING SEA   ·   ALPHA 0.2", 10, _gold));
+        title.AddChild(Text("FIRST WATCH   ·   ALPHA 0.3.0", 10, _gold));
         topRow.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
         _status = Text("", 14, _muted); topRow.AddChild(_status);
         AddButton(topRow, "Pack", () => Toggle("pack")); AddButton(topRow, "Crew", () => Toggle("crew"));
@@ -39,15 +40,16 @@ public partial class AlphaHud : CanvasLayer
         _place = Text("", 14, _ink); left.AddChild(_place);
         var objective = PlacePanel(_root, Control.LayoutPreset.TopRight, -303, 109, -22, 275);
         var goals = new VBoxContainer(); objective.AddChild(goals);
-        goals.AddChild(Text("A BERTH & A HORIZON", 11, _gold));
+        goals.AddChild(Text("YOUR FIRST WATCH", 11, _gold));
         _objective = Text("", 16, _ink); _objective.AutowrapMode = TextServer.AutowrapMode.WordSmart; goals.AddChild(_objective);
-        AddButton(goals, "Ship & stores  ·  B", () => Toggle("ship"));
+        _loadingButton = AddButton(goals, "Loading job · details", OpenLoading);
 
         var bottom = PlacePanel(_root, Control.LayoutPreset.BottomWide, 22, -74, -22, -19);
         var controls = Row(bottom, 17);
-        controls.AddChild(Text("WASD  Walk     Wheel  Zoom", 14, _ink));
+        _movement = Text("WASD  Walk     Wheel  Zoom\nShift  Run: OFF", 14, _ink); controls.AddChild(_movement);
         controls.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
-        _interact = AddButton(controls, "E  Explore the ship", () => Game.Interact());
+        _walkHint = Text("Walk the deck", 14, _ink); controls.AddChild(_walkHint);
+        _interact = AddButton(controls, "E  Interact", () => Game.Interact());
         AddButton(controls, "H  Guide", () => Toggle("help"));
 
         _toast = Text("", 17, _ink); _root.AddChild(_toast);
@@ -142,15 +144,16 @@ public partial class AlphaHud : CanvasLayer
     public void ShowTitle()
     {
         Section("title", "Island Glow");
-        Paragraph("THE LIVING SEA", 14, true);
+        Paragraph("FIRST WATCH", 14, true);
         Paragraph("A berth. A horizon. A world that remembers.", 30);
-        Paragraph("You are Rowan, newly signed aboard the Wayward Dawn. Work a watch, learn the crew, and follow the chart beyond Brinehaven. Every possession has a history. Every sailor has a life beyond yours.", 19);
-        Paragraph("Walk the deck with WASD. Use E near people and stations. Roll the mouse wheel from your boots to the far reaches of the known sea.", 17, true);
+        Paragraph("You are Rowan, newly signed aboard the Wayward Dawn. A harbour full of provisions, a crew with unfinished business, and your first chance to earn a share. Load the ship, decide who gets paid, then follow the chart beyond familiar waters.", 19);
+        Paragraph("Each new voyage creates a different archipelago and harbour layout. Continuing a voyage returns to the world you left.", 16, true);
+        Paragraph("Move with WASD, including across the gangway to shore. Tap Shift to toggle running. Use E near people and stations. Roll the mouse wheel from your boots to the far reaches of the known sea.", 17, true);
         var row = Row(_content);
         AddButton(row, "Continue voyage", Game.LoadGame, !File.Exists(Game.SavePath));
         AddButton(row, "Begin a new voyage", Game.NewVoyage);
         AddButton(row, "Read the ship's guide", OpenHelp);
-        Paragraph("ALPHA 0.2  ·  Offline single-player  ·  Your voyage saves automatically", 12, true);
+        Paragraph("ALPHA 0.3.0  ·  Offline single-player  ·  A different world each voyage", 12, true);
     }
 
     public void OpenPause()
@@ -182,9 +185,16 @@ public partial class AlphaHud : CanvasLayer
     {
         Section("help", "The ship's guide");
         Paragraph("Your first voyage", 23);
-        Paragraph("Meet someone with E. Find a bucket, cargo lashings or the carpenter's bench and finish a duty. Use B to go ashore at Brinehaven. Buy provisions at the market, return along the pier, and deposit supplies into the ship's stores. Ask the navigator about nearby shores. Plot a course from the Chart, land at Turtle Key, recover its cargo, and return to a port to trade.");
+        Paragraph("Visit the marked STOW point beside the aft cargo and press E to accept the loading job. Cross the port-side gangway and follow the pier toward shore. E picks up a provision crate. Carry it back aboard and press E at STOW. R sets it down along the way. After two loads, choose who gets the third load's pay: help a crewmate, or take the overtime yourself. Your choice changes real coin and relationships.");
+        var world = Game.World;
+        Paragraph($"When the loading is done, meet the crew, visit the market in {world.Islands[world.StartIslandId].Name}, or open N to set a course. {world.Islands[world.NearbySalvageId].Name} offers shore cargo; {world.Islands[world.NearbyPortId].Name} is a nearby trading harbour. Your starting region changes with each new voyage.");
         Paragraph("Finding your way", 23);
-        Paragraph("WASD · walk     E · interact / leave the wheel     Mouse wheel · continuous zoom\nM · zoom between deck and known world     Middle drag · pan at sea scale     Home · recenter\nTab · pack     B · ship and stores     C · crew     N · chart     J · journal\nQ · anchor / weigh anchor     F5 · save     F9 · load prompt     Escape · pause     F11 · fullscreen");
+        Paragraph("WASD · move     Shift · toggle run     E · interact / pick up / stow     R · put down cargo\nMouse wheel · zoom     M · deck / world     Middle drag · pan     Home · recenter\nTab · pack     B · ship and stores     C · crew     N · chart     J · journal\nQ · anchor / weigh anchor     F5 · save     F9 · load prompt     Escape · pause     F11 · fullscreen");
+        Paragraph("Tap either Shift key once to run, then again to walk. The footer shows Run: ON or OFF. Your choice remains when you stop, change decks, go ashore or reload a save. A new voyage starts walking.", 16, true);
+        Paragraph("Aboard the Wayward Dawn", 23);
+        Paragraph("The pointed bow leads to the lookout and capstan. Guns line both sides of the waist. Aft, cargo lies to port and the carpenter's bench to starboard; the wheel and chart table sit at the stern. Port is your left when facing the bow. The central companionway leads below to the galley, mess benches, stores and sleeping berths.");
+        Paragraph("At a berth, the port-side rail opens onto the gangway between the after gun and cargo. Walk straight across in either direction. The crew lowers it once the ship has settled alongside; keep the crossing clear before getting under way.", 16, true);
+        Paragraph("The crew changes watches, works separate stations, gathers below for meals and turns in to rest. Find a sailor at their work or follow them off watch. Select someone nearby to see what they are doing.", 16, true);
         Paragraph("At the wheel", 23);
         Paragraph("Walk aft to the wheel and press E. W/S increase or reduce sail; A/D turn. Or plot a course from the Chart and let the watch sail there. Q brings the vessel to rest. You can land when anchored close to a shore. A charted rumour is approximate until you see the island yourself.");
         Paragraph("People, possessions and consequences", 23);
@@ -196,10 +206,19 @@ public partial class AlphaHud : CanvasLayer
 
     private string NextObjective()
     {
+        var world = Game.World;
+        if (world.LoadingJob is { Completed: false } job)
+        {
+            int stowed = job.Crates.Count(c => c.Stowed);
+            if (job.AcceptedBy.Length == 0) return "01  Earn your first share\nVisit STOW beside the aft cargo. E opens the loading job.";
+            if (world.Player.CarriedCargoId.Length > 0) return $"{stowed}/3 crates stowed\nCarry this load to STOW aboard. E stows · R puts it down.";
+            if (stowed == 2 && job.FinalChoice < 0) return "02  One more pair of hands\nReturn to STOW to decide who earns the last load's pay.";
+            return $"{stowed}/3 crates stowed\n{LoadingDirections()}";
+        }
         var complete = Game.World.CompletedMilestones;
         if (!complete.Contains("meet")) return "01  A familiar face\nMeet a crewmate. Walk close and press E.";
         if (!complete.Contains("duty")) return "02  Useful hands\nComplete a deck duty at a bucket, bench or cargo station.";
-        if (!complete.Contains("trade")) return "03  Harbour business\nGo ashore from Ship & stores. Visit the market.";
+        if (!complete.Contains("trade")) return "03  Harbour business\nWalk across the gangway and follow the pier to the market.";
         if (!complete.Contains("provision")) return "04  A shared voyage\nPut some supplies into your ship's stores.";
         if (!complete.Contains("discover")) return "05  Beyond the familiar\nAsk around, plot a course, and chart a new shore.";
         if (!complete.Contains("salvage")) return "06  What the tide brings\nGo ashore on an uninhabited island and recover cargo.";
@@ -207,18 +226,97 @@ public partial class AlphaHud : CanvasLayer
         return "The sea is yours\nTrade, explore, follow your crew's stories—or earn their command.";
     }
 
+    private string LoadingDirections()
+    {
+        var world = Game.World;
+        if (world.LoadingJob is not { } job) return "Explore the harbour.";
+        var crate = job.Crates.Where(c => !c.Stowed && c.CarrierId.Length == 0 && (!c.Optional || job.FinalChoice >= 0))
+            .OrderBy(c => CargoLoading.WorldPosition(world, c).Distance(Rules.WorldPosition(world, world.Player))).FirstOrDefault();
+        if (crate == null) return "Return to STOW to review the last load.";
+        double distance = CargoLoading.WorldPosition(world, crate).Distance(Rules.WorldPosition(world, world.Player));
+        if (crate.PlaceId == job.ShipId) return $"Retrieve the crate left aboard · {distance:0}m away. E lifts it.";
+        var island = world.Islands[crate.PlaceId];
+        if (crate.Position.Distance(HarbourAccess.CargoPickup(island)) > 4)
+            return $"Retrieve the crate left ashore · {distance:0}m away. E lifts it.";
+        return "Follow the gangway and pier toward shore. E picks up a marked crate.";
+    }
+
+    public void OpenLoading()
+    {
+        var world = Game.World;
+        Section("loading", "A share before we sail");
+        if (world.LoadingJob is not { } job) { Paragraph("No loading job is waiting at this berth."); return; }
+        var ship = world.Ships[job.ShipId];
+        var harbour = world.Islands[job.IslandId];
+        int delivered = job.Crates.Count(c => c.Stowed);
+        string helper = world.People.TryGetValue(job.HelperId, out var crewmate) ? crewmate.Name : "a crewmate";
+        Paragraph($"{ship.Name} · {harbour.Name}\n{delivered}/3 crates stowed · Your purse {Rules.Money(world.Player.Money)}", 16, true);
+        if (job.Completed)
+        {
+            Paragraph("The provisions are aboard.", 25);
+            Paragraph(job.Outcome, 18);
+            Paragraph($"You earned {Rules.Money(job.PaidToPlayer)}. {Rules.Money(job.PaidToHelper)} went to your crewmate. The supplies are now in the ship's stores.", 16, true);
+            var actions = Row(_content);
+            AddButton(actions, "Meet the crew", () => { Close(); Notify("Find a crewmate and press E. Your work has left a mark on the crew."); });
+            AddButton(actions, "Choose our next shore", () => OpenChart());
+            Paragraph($"The nearby trading harbour is {world.Islands[world.NearbyPortId].Name}. The navigator also knows of {world.Islands[world.NearbySalvageId].Name}. Visit the market, trade news, or take a delivery before sailing.", 16);
+            return;
+        }
+        if (job.AcceptedBy.Length == 0)
+        {
+            Paragraph("Three crates are waiting on the shoreward pier. They belong to the ship, but they are no use to the crew until someone brings them aboard.", 20);
+            Paragraph($"Carry the first two loads for {Rules.Money(job.PerCratePay)} each. For the last load, choose between another {Rules.Money(job.PerCratePay)} for yourself or helping a crewmate keep their pay.");
+            Paragraph("E picks up one crate. Carry it across the gangway to the STOW marker aft; E stows it. R lets you put it down. Your hands are full while carrying, so fighting and working the wheel must wait.", 16, true);
+            AddButton(_content, "Accept loading job", () => { if (Game.Send(CommandKind.LoadingAccept).Success) Close(); }, !Game.NearLoadingStow);
+            if (!Game.NearLoadingStow) Paragraph("To sign on, walk to STOW beside the cargo at the back of your ship and press E.", 16, true);
+            AddButton(_content, "Explore first", Close);
+            return;
+        }
+        if (delivered == 2 && job.FinalChoice < 0)
+        {
+            Paragraph("One more pair of hands", 24);
+            bool canHelp = CargoLoading.EligibleHelper(world, job) != null;
+            Paragraph(canHelp ? $"{helper} has a share of the loading work too. You can take the last load off their hands and let them keep the wage, or claim the overtime yourself." : "The crewmate assigned to the last load is no longer available. You can still finish the job and take the overtime.", 19);
+            Paragraph($"Your first two wages are already paid: {Rules.Money(job.PaidToPlayer)}. This choice decides the final {Rules.Money(job.PerCratePay)}.", 16, true);
+            AddButton(_content, "Help crewmate · their 30b", () => { if (Game.Send(CommandKind.LoadingChoice, amount: 0).Success) Close(); }, !canHelp || !Game.NearLoadingStow);
+            Paragraph(canHelp ? $"{helper} receives the wage when you stow the final crate. Helping improves their trust and affection toward you." : "Nobody is required to survive for the job to continue.", 15, true);
+            AddButton(_content, "Work overtime · earn 30b", () => { if (Game.Send(CommandKind.LoadingChoice, amount: 1).Success) Close(); }, !Game.NearLoadingStow);
+            Paragraph("You receive the last wage. Doing your paid work carries no relationship penalty.", 15, true);
+            if (!Game.NearLoadingStow) Paragraph("Return to STOW beside the aft cargo to settle the last load's pay.", 16, true);
+            return;
+        }
+        Paragraph(world.Player.CarriedCargoId.Length > 0 ? "You have a crate in your hands. Follow the gangway back to STOW beside the aft cargo." : LoadingDirections(), 20);
+        if (job.FinalChoice >= 0) Paragraph(job.FinalChoice == 0 ? CargoLoading.EligibleHelper(world, job) != null ? $"The last wage is promised to {helper}." : "Your crewmate is no longer available. Finish the load and its overtime wage goes to you." : "You chose the overtime wage.", 16, true);
+        Paragraph($"Paid to you so far: {Rules.Money(job.PaidToPlayer)}. Reserved wages still in the job: {Rules.Money(job.Escrow)}.", 16, true);
+        AddButton(_content, "Back to the job", Close);
+    }
+
     public override void _Process(double delta)
     {
         _toastTime -= (float)delta; _toast.Visible = _toastTime > 0;
         _refresh += (float)delta; if (_refresh < 0.2f) return; _refresh = 0;
         var world = Game.World; var player = world.Player; var ship = world.PlayerShip;
+        _movement.Text = player.CarriedCargoId.Length > 0 ? "WASD  Carry     R  Put down\nHands full · take your time" : ship.HelmsmanId == player.Id ? "W/S  Sail     A/D  Turn\nE  Leave the wheel" :
+            $"WASD  {(player.RunEnabled ? "Run" : "Walk")}     Wheel  Zoom\nShift  Run: {(player.RunEnabled ? "ON" : "OFF")}";
+        _movement.AddThemeColorOverride("font_color", player.RunEnabled && ship.HelmsmanId != player.Id ? _gold : _ink);
         _status.Text = $"{world.Clock}\n{(Game.Paused ? "Paused" : $"{Game.TimeScale}× time")}  ·  {Game.Camera.ScaleName}";
         string place = world.Islands.TryGetValue(player.PlaceId, out var island) ? island.Name : ship.Name;
         _place.Text = $"{place}\n{Rules.Money(player.Money)}  ·  Health {player.Health:0}  ·  {player.Role}";
         _objective.Text = NextObjective();
+        _loadingButton.Text = world.LoadingJob is { Completed: false } ? "Loading job · details" : "First watch · results";
         string action = Game.SelectedPersonId.Length > 0 ? $"Speak to {world.People[Game.SelectedPersonId].Name}" : Game.SelectedStation?.Name ?? "Explore the deck";
         if (ship.HelmsmanId == player.Id) action = "Leave the wheel";
         if (player.TaskEndTick > world.Tick) action = $"{player.Activity}  {(player.TaskEndTick - world.Tick) / 20.0:0.0}s";
+        bool loadingAction = false;
+        if (player.CarriedCargoId.Length > 0) { action = Game.NearLoadingStow ? "Stow crate" : "Carry to STOW · R puts down"; loadingAction = Game.NearLoadingStow; }
+        else if (Game.SelectedCargoId.Length > 0) { action = "Pick up provision crate"; loadingAction = true; }
+        else if (Game.NearLoadingStow && world.LoadingJob is { Completed: false }) { action = "Loading job"; loadingAction = true; }
+        bool crossingHint = Game.SelectedPersonId.Length == 0 && Game.SelectedStation == null && player.Deck == 0 &&
+            HarbourAccess.GetGangway(world, ship) is { } gangway &&
+            Rules.WorldPosition(world, player).Distance(player.PlaceId == ship.Id ? gangway.ShipEnd : gangway.ShoreEnd) < 9;
+        bool hasAction = player.CarriedCargoId.Length > 0 ? loadingAction : loadingAction || Game.SelectedPersonId.Length > 0 || Game.SelectedStation != null || ship.HelmsmanId == player.Id || player.TaskEndTick > world.Tick;
+        _walkHint.Visible = !hasAction; _interact.Visible = hasAction;
+        _walkHint.Text = player.CarriedCargoId.Length > 0 ? "Carry to STOW · R puts down" : crossingHint ? "Walk across the gangway" : world.Islands.ContainsKey(player.PlaceId) ? "Explore the shore" : "Explore the deck";
         _interact.Text = "E  " + action;
     }
 
@@ -257,15 +355,20 @@ public partial class AlphaHud : CanvasLayer
         string captain = world.People.TryGetValue(ship.CaptainId, out var person) ? person.Name : "No captain";
         Paragraph($"Captain {captain}  ·  {ship.CrewIds.Count(id => world.People[id].Alive)} living crew  ·  Hull {ship.Integrity:0}%  ·  Cleanliness {ship.Cleanliness:0}%");
         Paragraph($"Ship's purse {Rules.Money(ship.Treasury)}   ·   Biscuit {Rules.Stock(world, ship.Id, ItemKind.Food)}   ·   Water {Rules.Stock(world, ship.Id, ItemKind.Water)}   ·   Powder {Rules.Stock(world, ship.Id, ItemKind.Powder)}", 16, true);
+        Paragraph("Bow · lookout and capstan     Waist · guns and companionway     Aft · cargo, carpenter, chart and wheel\nBelow deck · galley and stores forward, mess amidships, berths aft", 14, true);
+        AddButton(_content, world.LoadingJob is { Completed: true } ? "First watch · results" : "Loading job · details", OpenLoading);
         var row = Row(_content);
         AddButton(row, ship.Anchored ? "Weigh anchor" : "Bring to anchor", () => { Game.Send(CommandKind.Anchor); OpenShip(); });
-        AddButton(row, "Go ashore", () => { var result = Game.Send(CommandKind.Disembark); if (result.Success) { Close(); Game.Camera.SetZoom(0.16f); } });
+        if (HarbourAccess.GetGangway(world, ship) != null)
+            Paragraph("The gangway is down on the port side. Walk across to shore or back aboard.", 16, true);
+        else if (ship.Anchored && Game.Session.NearbyHarbour(ship) != null)
+            Paragraph("The gangway lowers once the ship is settled alongside the pier.", 16, true);
         AddButton(row, "Seek the crew's command", () => Game.Send(CommandKind.ClaimCommand));
         Paragraph("Sailing time", 20);
         var time = Row(_content);
         foreach (int rate in new[] { 1, 4, 12 }) AddButton(time, rate + "×", () => { Game.TimeScale = rate; Close(); });
         Paragraph("Shared stores", 20);
-        foreach (var item in world.Items.Values.Where(i => i.OwnerId == ship.Id && !i.Consumed).ToArray())
+        foreach (var item in world.Items.Values.Where(i => i.OwnerId == ship.Id && !i.Consumed && !CargoLoading.IsReserved(world, i.Id)).ToArray())
         {
             var stock = Row(_content); var label = Text($"{item.Name} ×{item.Quantity}", 16, _ink); label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; stock.AddChild(label);
             AddButton(stock, "Take one", () => { Game.Send(CommandKind.Withdraw, itemId: item.Id); OpenShip(); });
@@ -308,6 +411,8 @@ public partial class AlphaHud : CanvasLayer
         var person = Game.World.People[id]; Section("person", person.Name);
         Paragraph($"{person.Role} · {person.Trait} · {(person.Alive ? person.Activity : "Dead")}", 16, true);
         if (person.Injuries.Count > 0) Paragraph("Visible injuries: " + string.Join(", ", person.Injuries), 15);
+        if (Game.World.LoadingJob is { Completed: true, PaidToHelper: > 0 } completed && completed.HelperId == id && person.Alive)
+            Paragraph($"“You took my load and let me keep my share. I remember that.”\nYou helped {person.Name} earn {Rules.Money(completed.PaidToHelper)} on your first watch.", 18);
         _dialogue = Paragraph(person.Alive ? "A life with its own obligations, loyalties and unfinished business." : "Their possessions remain, along with the consequences of their death.", 19);
         var row = Row(_content);
         if (person.Alive)
@@ -360,6 +465,12 @@ public partial class AlphaHud : CanvasLayer
     private void OpenJournal()
     {
         Section("journal", "The ship's journal");
+        if (Game.World.LoadingJob is { } loading)
+        {
+            Paragraph("Your first watch", 23);
+            Paragraph(loading.Completed ? loading.Outcome : $"{loading.Crates.Count(c => c.Stowed)}/3 provision crates stowed at {Game.World.Islands[loading.IslandId].Name}. Paid to you: {Rules.Money(loading.PaidToPlayer)}.", 17);
+            AddButton(_content, loading.Completed ? "Review loading result" : "Loading job · details", OpenLoading);
+        }
         var deliveries = Game.World.Deliveries.Where(d => d.AcceptedBy == Game.World.PlayerId).ToArray();
         if (deliveries.Length > 0) Paragraph("Your commissions", 23);
         foreach (var job in deliveries)

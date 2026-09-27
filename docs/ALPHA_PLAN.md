@@ -1,5 +1,19 @@
 # Alpha 0.2 — The Living Sea
 
+## Implemented follow-up: 0.3.0 — First Watch
+
+Approved on 2026-09-27: focus one playable ship/harbour experience around physical provision loading. Establish one saved layout for island terrain, solids, stations, paths and berth geometry; both rendering and authority consume it. Generate different seeded starting regions with reachable harbours. Carry actual persistent crates from the pier into the ship and choose who earns the final load's wage. Verify conservation, movement, persistence, helper death/absence, and the complete real-input loop. Fresh schema-3 saves are explicitly authorized; migration from the earlier prototype is outside this pass. D014 records scope and authorization.
+
+The 0.3.0 Windows package is ready for human playtesting; mechanical and visual evidence is in VERIFICATION.md. Prioritize feedback on this first watch before adding more systems. The original alpha plan below is historical evidence of the broader baseline.
+
+Follow-up 0.2.4 adds Andrew's requested run toggle: tap Shift, retain the choice across movement and saves, and show the selected mode in the footer. See decision D012 and release verification.
+
+Follow-up 0.2.3 implements Andrew's direct walk-off request: continuous movement over a physical port-side gangway and connected harbour pier, including walking back aboard. See decision D011 and release verification.
+
+Follow-up 0.2.1 implements Andrew's larger, livelier ship request. The camera study, scale change, shared furniture/routes, routines and compatibility decisions are in [SHIP_SCALE](SHIP_SCALE.md). Current verification supersedes the original 0.2.0 counts below; see [VERIFICATION](VERIFICATION.md).
+
+Follow-up 0.2.2 implements the approved native paper-character rig: interchangeable pieces, articulated walking/work/combat/rest poses, and observation-driven motion shared by player and crew. The art contract and remaining directional/contact work are in [CHARACTER_ANIMATION](CHARACTER_ANIMATION.md). Release verification remains recorded separately.
+
 Authorized by Andrew on 2026-09-27. This replaces the earlier 0.1.0 implementation boundary. The full design remains the direction; alpha completion means a coherent, replayable subset with working systems, not every eventual production feature.
 
 ## Playable loop

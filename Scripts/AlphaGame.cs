@@ -19,10 +19,13 @@ public partial class AlphaGame : Node3D
     public bool VoyageStarted { get; private set; }
     public int TimeScale { get; set; } = 1;
     public string SelectedPersonId { get; private set; } = "";
+    public string SelectedCargoId { get; private set; } = "";
+    public bool NearLoadingStow => World.LoadingJob is { } job && World.Player.PlaceId == job.ShipId && World.Player.Deck == 0 &&
+        World.Player.Position.Distance(CargoLoading.StowPosition) <= Rules.InteractionRange;
     public Station? SelectedStation { get; private set; }
     public InterestSnapshot Snapshot { get; private set; } = null!;
     public bool IsVerification => Array.Exists(OS.GetCmdlineUserArgs(), a => a == "--alpha-check");
-    public string SavePath => Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "IslandGlow", IsVerification ? "alpha-check-v2.json" : Array.Exists(OS.GetCmdlineUserArgs(), a => a == "--qa-profile") ? "qa-v2.json" : "alpha-v2.json");
+    public string SavePath => Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "IslandGlow", IsVerification ? "alpha-check-v3.json" : Array.Exists(OS.GetCmdlineUserArgs(), a => a == "--qa-profile") ? "qa-v3.json" : "alpha-v3.json");
     private long _sequence;
     private long _lastSaveTick;
     private double _inputClock, _viewClock;
@@ -52,14 +55,16 @@ public partial class AlphaGame : Node3D
     {
         Session = new AuthoritativeSession(state); Session.BindController("local", state.PlayerId);
         _sequence = 0; _lastSaveTick = state.Tick; _deathShown = false; TimeScale = 1;
+        SelectedCargoId = SelectedPersonId = ""; SelectedStation = null;
         View.Initialize(state); Snapshot = WorldQueries.Observe(state, state.PlayerId); _viewClock = 0;
-        Camera.Recenter(); Camera.SetZoom(0.1f);
+        Camera.Recenter(); Camera.SetZoom(SeaCamera.WalkingZoom);
     }
 
     public void NewVoyage()
     {
-        BeginWorld(WorldFactory.Create()); VoyageStarted = true; Paused = false; Hud.Close();
-        Hud.Notify("A new berth aboard the Wayward Dawn. E interacts; H opens the ship's guide.");
+        int seed = IsVerification ? 1742 : System.Security.Cryptography.RandomNumberGenerator.GetInt32(1, int.MaxValue);
+        BeginWorld(WorldFactory.Create(seed)); VoyageStarted = true; Paused = false; Hud.Close();
+        Hud.Notify("Your first watch: visit the marked cargo station aft to take a paid loading job. E interacts; Shift toggles run.");
     }
 
     public bool SaveGame(bool quiet = false)
@@ -127,32 +132,57 @@ public partial class AlphaGame : Node3D
         }
         _viewClock += delta;
         if (_viewClock >= 0.08) { Snapshot = WorldQueries.Observe(World, World.PlayerId); _viewClock = 0; SelectNearby(); }
-        View.Render(World, Snapshot, Camera, (float)delta, SelectedPersonId, SelectedStation);
+        View.Render(World, Snapshot, Camera, (float)delta, SelectedPersonId, SelectedStation, SelectedCargoId);
         if (!World.Player.Alive && !_deathShown) { _deathShown = true; Hud.ShowDeath(); }
     }
 
     private void SelectNearby()
     {
         var actor = World.Player;
+        SelectedCargoId = World.LoadingJob?.Crates.Where(c => !c.Stowed && c.CarrierId.Length == 0 && c.PlaceId == actor.PlaceId && c.Deck == actor.Deck &&
+            c.Position.Distance(actor.Position) <= CargoLoading.PickupRange).OrderBy(c => c.Optional && World.LoadingJob.FinalChoice < 0)
+            .ThenBy(c => c.Position.Distance(actor.Position)).FirstOrDefault()?.ItemId ?? "";
         var person = World.People.Values.Where(p => p.Id != actor.Id && Rules.Near(actor, p, Rules.InteractionRange)).OrderBy(p => p.Position.Distance(actor.Position)).FirstOrDefault();
         var station = WorldLayout.NearestStation(World, actor);
+        // The harbour connection is walked across, never selected as a teleport interaction.
+        if (station?.Kind == StationKind.Dock) station = null;
         if (station != null && station.Position.Distance(actor.Position) > Rules.InteractionRange) station = null;
         // Keep interactions with the wheel and companionway reachable even amid a crowd.
-        bool preferStation = station != null && (person == null || station.Position.Distance(actor.Position) < person.Position.Distance(actor.Position) || station.Kind is StationKind.Helm or StationKind.Hatch);
+        bool preferStation = station != null && (person == null || station.Position.Distance(actor.Position) < 0.75 || station.Position.Distance(actor.Position) < person.Position.Distance(actor.Position) || station.Kind is StationKind.Helm or StationKind.Hatch);
         SelectedStation = preferStation ? station : null; SelectedPersonId = preferStation ? "" : person?.Id ?? "";
+        if (SelectedCargoId.Length > 0 || actor.CarriedCargoId.Length > 0 || NearLoadingStow && World.LoadingJob is { Completed: false })
+        { SelectedStation = null; SelectedPersonId = ""; }
     }
 
     public void Interact()
     {
         if (World.PlayerShip.HelmsmanId == World.PlayerId) { Send(CommandKind.Helm); return; }
+        if (World.Player.CarriedCargoId.Length > 0)
+        {
+            if (!NearLoadingStow) { Hud.Notify("Carry this crate to the marked stow point aft. R sets it down here."); return; }
+            var result = Send(CommandKind.CargoStow);
+            if (result.Success && World.LoadingJob is { } job && (job.Completed || job.Crates.Count(c => c.Stowed) == 2 && job.FinalChoice < 0)) Hud.OpenLoading();
+            return;
+        }
+        if (SelectedCargoId.Length > 0)
+        {
+            var job = World.LoadingJob!;
+            var crate = job.Crates.First(c => c.ItemId == SelectedCargoId);
+            if (job.AcceptedBy.Length == 0 || crate.Optional && job.FinalChoice < 0) Hud.OpenLoading();
+            else Send(CommandKind.CargoPickup, itemId: SelectedCargoId);
+            return;
+        }
+        if (NearLoadingStow && World.LoadingJob is { Completed: false }) { Hud.OpenLoading(); return; }
         if (SelectedPersonId.Length > 0) { Hud.OpenPerson(SelectedPersonId); return; }
         if (SelectedStation == null) { Hud.Notify("Move close to a crewmate, a duty station, or the harbour pier."); return; }
         switch (SelectedStation.Kind)
         {
-            case StationKind.Helm: Send(CommandKind.Helm); Camera.SetZoom(0.2f); break;
+            case StationKind.Helm: Send(CommandKind.Helm); Camera.SetZoom(SeaCamera.ShipZoom); break;
             case StationKind.Hatch: Send(CommandKind.Deck); break;
             case StationKind.Bunk: Send(CommandKind.Rest); break;
-            case StationKind.Dock: Send(CommandKind.Board); Camera.SetZoom(0.1f); break;
+            case StationKind.Mess: Send(CommandKind.Rest); break;
+            case StationKind.Chart: Hud.Toggle("chart"); break;
+            case StationKind.Dock: Hud.Notify("Walk across the gangway to return aboard."); break;
             case StationKind.Market:
                 if (World.Islands.TryGetValue(World.Player.PlaceId, out var island)) Hud.OpenMarket(island.MerchantId);
                 break;
@@ -178,14 +208,18 @@ public partial class AlphaGame : Node3D
                 case Key.N: Hud.Toggle("chart"); break;
                 case Key.B: Hud.Toggle("ship"); break;
                 case Key.H: Hud.Toggle("help"); break;
-                case Key.M: Camera.SetZoom(Camera.TargetZoom > 0.7f ? 0.1f : 1); break;
+                case Key.M: Camera.SetZoom(Camera.TargetZoom > 0.7f ? SeaCamera.WalkingZoom : 1); break;
                 case Key.Home: Camera.Recenter(); break;
                 case Key.F5: SaveGame(); break;
                 case Key.F9: Hud.ConfirmLoad(); break;
                 case Key.F11: DisplayServer.WindowSetMode(DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen); break;
                 case Key.Space: if (!Paused) Send(CommandKind.Dodge, direction: World.Player.Facing); break;
-                case Key.F: if (!Paused) Send(CommandKind.Shove, NearestEnemy()); break;
+                case Key.F: if (!Paused) Send(CommandKind.Shove, NearestEnemy(includeDead: true)); break;
                 case Key.Q: if (!Paused) Send(CommandKind.Anchor); break;
+                case Key.R: if (!Paused && World.Player.CarriedCargoId.Length > 0) Send(CommandKind.CargoDrop); break;
+                case Key.Shift:
+                    if (VoyageStarted && !Paused && !Hud.IsOpen) Send(CommandKind.SetRun, amount: World.Player.RunEnabled ? 0 : 1);
+                    break;
                 default: return;
             }
             GetViewport().SetInputAsHandled();
@@ -197,7 +231,7 @@ public partial class AlphaGame : Node3D
         }
     }
 
-    private string NearestEnemy() => World.People.Values.Where(p => p.Alive && p.Id != World.PlayerId && Rules.Near(World.Player, p, 10)).OrderBy(p => p.Position.Distance(World.Player.Position)).FirstOrDefault()?.Id ?? "";
+    private string NearestEnemy(bool includeDead = false) => World.People.Values.Where(p => (p.Alive || includeDead) && p.Id != World.PlayerId && Rules.Near(World.Player, p, 10)).OrderBy(p => p.Position.Distance(World.Player.Position)).FirstOrDefault()?.Id ?? "";
 
     public override void _Input(InputEvent input)
     {

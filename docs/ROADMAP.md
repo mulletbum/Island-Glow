@@ -4,21 +4,35 @@ Andrew's 2026-09-27 overnight instruction expanded the ship prototype into a pla
 
 ## Alpha 0.2 — The Living Sea
 
+0.2.4 adds Shift-to-toggle running with persistent movement selection, clear HUD feedback and an observed running gait.
+
+0.2.3 replaces the player's button-driven shore transfer with a shared physical gangway and pier route, preserving world position as people walk between coordinate frames.
+
 Working: pure C# authority; persistent people/property/knowledge; a 56-island world; crew life and recurring encounters; trade, work, provision, delivery and salvage; sailing/discovery/landing; accessible consequential combat; succession; save/recovery; continuous camera; integrated HUD and procedural graphics/audio. The acceptance voyage is automated and passing. Windows packaging and review are recorded in [VERIFICATION](VERIFICATION.md).
 
 The alpha is a baseline for playtesting and focused expansion. It is not the entire design, a finished campaign, or a multiplayer release. Keep the concrete gaps in [ISSUES](ISSUES.md) visible.
 
-## Next: 0.2.1 — Feel and clarity
+## 0.2.1–0.2.2 — Feel and clarity
+
+The first 0.2.1 pass now implements Andrew's larger-ship request: a 72×26 hull, local camera based on The Escapists 2 reference observations, shared furniture collision, deck routing, distributed work/rest spaces and rotating crew routines. See [SHIP_SCALE](SHIP_SCALE.md). The remaining feel/clarity work below still needs playtesting.
+
+The 0.2.2 follow-up adds the approved native paper-character rig, with articulated limbs and shared locomotion, work, combat and rest poses. See [CHARACTER_ANIMATION](CHARACTER_ANIMATION.md). Human review still needs to establish whether the motion reads clearly at the ordinary camera distance; full side views and station/terrain contact solving remain later work.
 
 - Play Andrew's first voyage without coaching. Record where he gets lost, where he waits, and where the UI hides something useful.
-- Improve character directional animation, station silhouettes, click targets, feedback, sound mix and small-window layouts based on that playtest.
-- Resolve NPC local steering/crowding and below-deck furniture collision. Add shared path layouts where obstacles defeat local steering.
+- Refine character directional art and joint motion, station silhouettes, click targets, feedback, sound mix and small-window layouts based on that playtest.
+- Playtest the new ship routing, occupied stations and below-deck furniture collision; address remaining social crowding and island steering from observed failures.
 - Balance wages, travel, supply burn, medicine, cargo rewards, combat response and leadership support. Avoid grinding kindness or duties as the only route to agency.
 - Add explicit save slots/new-voyage confirmation and a supported migration strategy before changing a publicly tested save format.
 
 Acceptance: an unassisted first voyage and deliberate death/disruption scenarios remain understandable; no loss of identity or accepted contract progress; representative input/render regressions pass.
 
-## Next: 0.3 — People beyond the deck
+## Playable: 0.3.0 — First Watch
+
+Andrew approved one focused ship/harbour milestone: shared saved layouts, procedurally varied starting regions, physical provision loading and a visible choice between overtime pay and helping a crewmate. Start with a small set of constrained harbour templates. Establish a readable, repeatable player experience before expanding the activity vocabulary. Schema-3 fresh saves are authorized; previous alpha saves remain archived rather than migrated. See D014 and ALPHA_PLAN.
+
+Implemented and verified: accept a funded job, physically collect/carry/drop/recover/stow the crates, see pay and relationship consequences, then choose a next shore in the generated region. Different seeds produce different valid layouts; identical seeds reproduce them; reload preserves generated geometry and in-progress cargo. Helper death or absence does not block completion. See VERIFICATION for the package checks. Andrew's unassisted playtest and tuning of this loop come before expanding the systems below.
+
+## Next: People beyond the deck
 
 - Remembered whereabouts, shore leave with a return plan, meetings between visiting crews, and relationships that motivate travel/reunions across places.
 - Personal goals and scarce opportunities that compete with friendship, debt, ambition and fear. Players can participate in conflicts rather than only raise scores.

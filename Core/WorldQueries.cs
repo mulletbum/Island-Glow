@@ -1,7 +1,8 @@
 namespace IslandGlow.Core;
 
 public sealed record PersonView(string Id, string Name, Role Role, string PlaceId, int Deck, Point Position, Point Facing,
-    bool Alive, double Health, string Activity, int Appearance, string CoatColor, ItemKind? Weapon, long AttackUntil, long DodgeUntil, long IncapacitatedUntil);
+    bool Alive, double Health, string Activity, int Appearance, string CoatColor, ItemKind? Weapon, long AttackUntil, long DodgeUntil, long IncapacitatedUntil,
+    bool Blocking = false, long LastHitTick = -1000, ItemKind? CarriedItemKind = null);
 public sealed record ChartView(string Id, string Name, string Region, Point Position, double Radius, bool IsPort, double Confidence, bool Visited);
 public sealed record NewsView(string Id, string Summary, double Confidence, string SourceId, bool Witnessed);
 public sealed record InterestSnapshot(long Tick, string ActorId, IReadOnlyList<PersonView> People, IReadOnlyList<ChartView> Chart, IReadOnlyList<NewsView> News);
@@ -16,7 +17,8 @@ public static class WorldQueries
         var people = world.People.Values.Where(p => p.PlaceId == viewer.PlaceId ? p.Deck == viewer.Deck : p.Deck == 0 && Rules.WorldPosition(world, p).Distance(position) < 200)
             .Select(p => new PersonView(p.Id, p.Name, p.Role, p.PlaceId, p.Deck, p.Position, p.Facing, p.Alive, p.Health, p.Activity, p.Appearance,
                 world.Items.TryGetValue(p.EquippedCoatId, out var coat) ? coat.Color : "", world.Items.TryGetValue(p.EquippedWeaponId, out var weapon) ? weapon.Kind : null,
-                p.AttackUntil, p.DodgeUntil, p.IncapacitatedUntil)).ToArray();
+                p.AttackUntil, p.DodgeUntil, p.IncapacitatedUntil, p.Blocking, p.LastHitTick,
+                CargoLoading.Carried(world, p) is { } carried && world.Items.TryGetValue(carried.ItemId, out var cargo) ? cargo.Kind : null)).ToArray();
         var chart = viewer.Chart.Values.Where(c => world.Islands.ContainsKey(c.IslandId)).Select(c =>
         {
             var island = world.Islands[c.IslandId];

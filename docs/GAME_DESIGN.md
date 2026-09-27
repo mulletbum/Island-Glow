@@ -247,6 +247,8 @@ Death is permanent in the intended world simulation; no NPC is protected to pres
 
 ## 13. World, factions, sailing, and continuous zoom
 
+**Established follow-up, 2026-09-27:** Andrew requires procedurally generated worlds. The generator's algorithm, scope, world size and starting-scenario constraints remain open. The current alpha's seeded starter template does not yet fulfill this direction; see decision D013.
+
 The maritime world contains ports, islands, trade routes, merchant traffic, naval patrols, other pirate crews, weather, and changing faction relationships. Reputation, bounties, crime, investigations, and law enforcement influence opportunities and danger. Exact sailing controls, wind physics, navigation model, procedural generation, map size, and faction diplomacy were not specified.
 
 The defining camera requirement is a continuous journey through:

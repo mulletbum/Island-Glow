@@ -11,56 +11,78 @@ public static class WorldFactory
 
     public static WorldState Create(int seed = 1742)
     {
-        var world = new WorldState { Seed = seed, RandomState = (ulong)(uint)seed + 0x9E3779B97F4A7C15UL };
+        var world = new WorldState { Seed = seed, ShipLayoutVersion = WorldLayout.ShipLayoutVersion, RandomState = (ulong)(uint)seed + 0x9E3779B97F4A7C15UL };
+        double Between(double low, double high) => low + Rules.NextRandom(world) * (high - low);
         var home = new Island
         {
-            Id = "island-00", Name = "Brinehaven", Region = Regions[0], Position = new(0, -180), Radius = 72,
+            Id = "island-00", Name = new[] { "Brinehaven", "Lantern Harbour", "Saltwind Quay" }[Rules.RandomInt(world, 3)], Region = Regions[0],
+            Position = new(Between(-120, 120), Between(-280, -120)), Radius = Between(76, 94),
             IsPort = true, ShapeSeed = seed, Export = ItemKind.Cloth, Import = ItemKind.Spice,
             Description = "A free harbour of weathered roofs, borrowed fortunes and familiar faces."
         };
+        IslandGeneration.Create(home);
         world.Islands.Add(home.Id, home);
+        world.StartIslandId = home.Id;
+        var usedNames = new HashSet<string> { home.Name };
+        double regionRotation = Between(-.22, .22);
+        int[] portIndexes = Enumerable.Range(0, 8).Select(region => region == 0 ? 2 : region * 7 + Rules.RandomInt(world, 7)).ToArray();
         for (int i = 1; i < 56; i++)
         {
             int region = i / 7;
-            double angle = region * Math.PI / 4;
-            var center = new Point(Math.Sin(angle) * (region == 0 ? 0 : 5000), -Math.Cos(angle) * (region == 0 ? 0 : 5000));
-            double localAngle = i * 2.3999632297;
-            double ring = 700 + (i % 7) * 470;
-            var position = center + new Point(Math.Sin(localAngle), Math.Cos(localAngle)) * ring;
-            if (i == 1) position = new Point(620, -670);
-            if (i == 2) position = new Point(-840, -450);
+            bool port = i == portIndexes[region];
+            double radius = port ? Between(72, 116) : Between(48, 116);
+            double angle = region * Math.PI / 4 + regionRotation;
+            var center = home.Position + new Point(Math.Sin(angle), -Math.Cos(angle)) * (region == 0 ? 0 : Between(4700, 5300));
+            Point position = Point.Zero;
+            bool placed = false;
+            for (int attempt = 0; attempt < 80; attempt++)
+            {
+                double localAngle = i == 1 ? Between(.45, 1.25) : i == 2 ? Between(-1.5, -.6) : i * 2.3999632297 + Between(-.35, .35) + attempt * .43;
+                double ring = i == 1 ? Between(570, 760) : i == 2 ? Between(850, 1080) : 700 + (i % 7) * 470 + Between(-150, 150) + attempt * 25;
+                position = center + new Point(Math.Sin(localAngle), -Math.Cos(localAngle)) * ring;
+                if (Math.Abs(position.X) > Rules.WorldExtent - 500 || Math.Abs(position.Z) > Rules.WorldExtent - 500) continue;
+                if (world.Islands.Values.All(other => position.Distance(other.Position) >= radius + other.Radius + 260)) { placed = true; break; }
+            }
+            if (!placed) throw new InvalidOperationException("Could not place a separated island for this seed.");
+            string name;
+            do { name = $"{Prefixes[Rules.RandomInt(world, Prefixes.Length)]} {Suffixes[Rules.RandomInt(world, Suffixes.Length)]}"; } while (!usedNames.Add(name));
             var island = new Island
             {
-                Id = $"island-{i:00}", Name = i == 1 ? "Turtle Key" : i == 2 ? "Copper Cay" : $"{Prefixes[(i * 7) % Prefixes.Length]} {Suffixes[(i / 3) % Suffixes.Length]}",
+                Id = $"island-{i:00}", Name = name,
                 Region = Regions[region], Position = position,
-                Radius = 48 + Rules.NextRandom(world) * 74, ShapeSeed = seed + i * 8191,
-                IsPort = i % 7 == 2, Export = (ItemKind)(i % 6), Import = (ItemKind)((i + 3) % 6),
+                Radius = radius, ShapeSeed = unchecked(seed + i * 8191),
+                IsPort = port, Export = (ItemKind)Rules.RandomInt(world, 6), Import = (ItemKind)Rules.RandomInt(world, 6),
                 Faction = region % 3 == 0 ? "Free Ports" : region % 3 == 1 ? "Crown Charter" : "Free Captains",
-                Description = i % 7 == 2 ? "A trading harbour where sailors exchange cargo, news and obligations." : "An unassuming shore. Fresh water, washed-up cargo and a place to catch your breath."
+                Description = port ? "A trading harbour where sailors exchange cargo, news and obligations." : "An unassuming shore. Fresh water, washed-up cargo and a place to catch your breath."
             };
+            IslandGeneration.Create(island);
             world.Islands.Add(island.Id, island);
         }
+        world.NearbySalvageId = world.Islands.Values.Where(i => !i.IsPort).OrderBy(i => i.Position.Distance(home.Position)).First().Id;
+        world.NearbyPortId = world.Islands.Values.Where(i => i.IsPort && i.Id != home.Id).OrderBy(i => i.Position.Distance(home.Position)).First().Id;
 
         var flagship = new Ship
         {
             Id = world.PlayerShipId, Name = "The Wayward Dawn", Position = home.Anchorage, LastPortId = home.Id,
-            Anchored = true, Color = "9d4e41", NextMealTick = 6000
+            Heading = home.Layout.BerthHeading, Anchored = true, Color = "9d4e41", NextMealTick = 6000
         };
         world.Ships.Add(flagship.Id, flagship);
         var player = new Person
         {
             Id = world.PlayerId, Name = "Rowan", Role = Role.Deckhand, HomeShipId = flagship.Id, PlaceId = flagship.Id,
-            Position = new(-2.6, 5.8), Goal = new(-2.6, 5.8), Money = 285, Appearance = 0,
+            Position = WorldLayout.BoardingPosition, Goal = WorldLayout.BoardingPosition, Money = 285, Appearance = 0,
             Trait = "Unwritten", Ambition = 70, Sociability = 55, Courage = 60, Greed = 35
         };
         world.People.Add(player.Id, player);
         flagship.CrewIds.Add(player.Id);
         Role[] roles = { Role.Captain, Role.FirstMate, Role.Quartermaster, Role.Cook, Role.Navigator, Role.Boatswain, Role.Deckhand, Role.Deckhand, Role.Deckhand, Role.Deckhand, Role.Deckhand, Role.Deckhand };
         string[] names = { "Mara Vane", "Elias Mercer", "Thomas Briggs", "Ada Bell", "Nell Finch", "Jonas Holt", "Inez Reed", "Silas Rook", "Flora Pike", "Caleb Marlow", "Mercy Quill", "Rufus Crane" };
-        Point[] positions = { new(2, 10.8), new(-2.5, -9), new(2.5, 2), new(-3.5, -3), new(2.2, -8), new(3.1, 5), new(-3.2, 3), new(2.4, -12), new(-3.5, -6), new(2.4, 6.5), new(-2.4, 10), new(-1.8, -3) };
+        string[] startingStations = { "helm", "lookout", "cargo", "galley", "chart", "repair", "swab", "cannon-port-fore", "swab-bow", "swab-mid", "stores", "bunk-2" };
         for (int i = 0; i < roles.Length; i++)
         {
-            var person = MakePerson(world, $"crew-{i:00}", names[i], roles[i], flagship.Id, positions[i], i + 1);
+            var station = WorldLayout.Station(startingStations[i]);
+            var person = MakePerson(world, $"crew-{i:00}", names[i], roles[i], flagship.Id, station.Position, i + 1);
+            person.Deck = station.Deck;
             person.HomeShipId = flagship.Id;
             flagship.CrewIds.Add(person.Id);
             if (i == 0) flagship.CaptainId = person.Id;
@@ -86,11 +108,12 @@ public static class WorldFactory
         {
             if (island.IsPort)
             {
-                var merchant = MakePerson(world, $"merchant-{island.Id}", Name(world), Role.Merchant, island.Id, new(-12, 12), Rules.RandomInt(world, 32));
+                Point At(StationKind kind) => island.Layout.Stations.First(s => s.Kind == kind).Position;
+                var merchant = MakePerson(world, $"merchant-{island.Id}", Name(world), Role.Merchant, island.Id, At(StationKind.Market), Rules.RandomInt(world, 32));
                 merchant.Money = 6500; island.MerchantId = merchant.Id;
-                MakePerson(world, $"wright-{island.Id}", Name(world), Role.Shipwright, island.Id, new(20, 22), Rules.RandomInt(world, 32));
-                MakePerson(world, $"innkeeper-{island.Id}", Name(world), Role.Resident, island.Id, new(14, -6), Rules.RandomInt(world, 32));
-                MakePerson(world, $"guard-{island.Id}", Name(world), Role.Guard, island.Id, new(-2, 18), Rules.RandomInt(world, 32));
+                MakePerson(world, $"wright-{island.Id}", Name(world), Role.Shipwright, island.Id, At(StationKind.Shipwright), Rules.RandomInt(world, 32));
+                MakePerson(world, $"innkeeper-{island.Id}", Name(world), Role.Resident, island.Id, At(StationKind.Tavern), Rules.RandomInt(world, 32));
+                MakePerson(world, $"guard-{island.Id}", Name(world), Role.Guard, island.Id, island.Layout.TownSquare, Rules.RandomInt(world, 32));
                 foreach (var kind in Enum.GetValues<ItemKind>())
                     AddItem(world, merchant.Id, kind, kind is ItemKind.Cutlass or ItemKind.Pistol or ItemKind.Coat or ItemKind.Diamond ? 1 : 25 + Rules.RandomInt(world, 25));
             }
@@ -115,7 +138,7 @@ public static class WorldFactory
             var ship = new Ship
             {
                 Id = $"ship-trader-{i}", Name = new[] { "Copper Lark", "Good Fortune", "Blue Wren", "North Star", "Mercy's Wake", "Red Kestrel", "Last Penny", "Salt Sparrow" }[i],
-                Position = ports[i % ports.Length].Anchorage + new Point(120, 50), Faction = i == 3 ? "Crown Charter" : "Free Traders",
+                Position = ports[i % ports.Length].Anchorage + new Point(120, 50).Rotated(ports[i % ports.Length].Layout.BerthHeading), Faction = i == 3 ? "Crown Charter" : "Free Traders",
                 Anchored = false, Throttle = 0.6, DestinationId = ports[(i + 1) % ports.Length].Id,
                 DestinationPosition = ports[(i + 1) % ports.Length].Anchorage,
                 Route = ports.Select(p => p.Id).ToList(), RouteIndex = (i + 1) % ports.Length, Color = "52747a"
@@ -124,7 +147,8 @@ public static class WorldFactory
             world.Ships.Add(ship.Id, ship);
             for (int crew = 0; crew < 4; crew++)
             {
-                var person = MakePerson(world, $"trader-{i}-{crew}", Name(world), crew == 0 ? Role.Captain : Role.Deckhand, ship.Id, new(-2 + crew, 7), 10 + i + crew);
+                var station = WorldLayout.Station(new[] { "helm", "lookout", "cargo", "swab" }[crew]);
+                var person = MakePerson(world, $"trader-{i}-{crew}", Name(world), crew == 0 ? Role.Captain : Role.Deckhand, ship.Id, station.Position, 10 + i + crew);
                 person.HomeShipId = ship.Id; ship.CrewIds.Add(person.Id);
                 if (crew == 0) ship.CaptainId = person.Id;
             }
@@ -150,9 +174,9 @@ public static class WorldFactory
         foreach (var person in world.People.Values.Where(p => p.HomeShipId == flagship.Id))
         {
             person.Chart[home.Id] = new ChartEntry { IslandId = home.Id, ReportedPosition = home.Position, Confidence = 1, Source = "Home harbour", Visited = true };
-            person.Chart["island-02"] = new ChartEntry { IslandId = "island-02", ReportedPosition = world.Islands["island-02"].Position, Confidence = 0.85, Source = "Navigator's chart" };
+            person.Chart[world.NearbyPortId] = new ChartEntry { IslandId = world.NearbyPortId, ReportedPosition = world.Islands[world.NearbyPortId].Position, Confidence = 0.85, Source = "Navigator's chart" };
         }
-        world.People["crew-04"].Chart["island-01"] = new ChartEntry { IslandId = "island-01", ReportedPosition = world.Islands["island-01"].Position + new Point(70, -30), Confidence = 0.6, Source = "A sailor's account" };
+        world.People["crew-04"].Chart[world.NearbySalvageId] = new ChartEntry { IslandId = world.NearbySalvageId, ReportedPosition = world.Islands[world.NearbySalvageId].Position + new Point(70, -30), Confidence = 0.6, Source = "A sailor's account" };
         // A worn commercial chart supplies distant bearings, not first-hand terrain knowledge.
         foreach (var port in ports.Where((_, index) => index is 3 or 5 or 7))
             player.Chart[port.Id] = new ChartEntry { IslandId = port.Id, ReportedPosition = port.Position + new Point(130, -90), Confidence = 0.65, Source = "A worn harbour chart" };
@@ -164,6 +188,7 @@ public static class WorldFactory
                 resident.Chart[port.Id] = new ChartEntry { IslandId = port.Id, ReportedPosition = port.Position, Confidence = 0.8, Source = "Local trading routes" };
         }
         Events.Record(world, EventKind.Arrival, player.Id, flagship.Id, "You signed aboard the Wayward Dawn. A berth, a share, and a sea full of possibilities.", publicAtPlace: true);
+        CargoLoading.Create(world);
         return world;
     }
 

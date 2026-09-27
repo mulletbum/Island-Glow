@@ -21,12 +21,17 @@ public readonly record struct Point(double X, double Z)
 public enum Role { Deckhand, Boatswain, Cook, Navigator, Quartermaster, FirstMate, Captain, Merchant, Shipwright, Resident, Guard }
 public enum ItemKind { Food, Water, Rum, Timber, Cloth, Spice, Medicine, Powder, Cutlass, Pistol, Coat, Diamond }
 public enum EventKind { Arrival, Discovery, Conversation, Favor, Insult, Gift, Theft, Trade, Duty, Injury, Death, Succession, Desertion, Recruitment, Rumor, Recovery, Cannon, Salvage, Supplies, Leadership }
-public enum CommandKind { Move, Helm, Steer, Anchor, Course, Disembark, Board, Talk, Compliment, Threaten, Bribe, Give, Steal, Buy, Sell, Equip, Use, Duty, Rest, Attack, Block, Dodge, Shove, Recruit, ClaimCommand, Deck, Gather, Deposit, Withdraw, FireCannon, Hail, RepairShip, SpreadRumor, SettleDebt, Mediate, AcceptDelivery, CompleteDelivery }
-public enum StationKind { Helm, Swab, Repair, Cargo, Cannon, Hatch, Galley, Bunk, Market, Tavern, Shipwright, Dock, Salvage }
+public enum CommandKind { Move, Helm, Steer, Anchor, Course, Disembark, Board, Talk, Compliment, Threaten, Bribe, Give, Steal, Buy, Sell, Equip, Use, Duty, Rest, Attack, Block, Dodge, Shove, Recruit, ClaimCommand, Deck, Gather, Deposit, Withdraw, FireCannon, Hail, RepairShip, SpreadRumor, SettleDebt, Mediate, AcceptDelivery, CompleteDelivery, SetRun, LoadingAccept, CargoPickup, CargoDrop, CargoStow, LoadingChoice }
+public enum StationKind { Helm, Swab, Repair, Cargo, Cannon, Hatch, Galley, Bunk, Market, Tavern, Shipwright, Dock, Salvage, Lookout, Chart, Mess }
 
-public sealed class WorldState
+public sealed partial class WorldState
 {
-    public int SchemaVersion { get; set; } = 2;
+    public int SchemaVersion { get; set; } = 3;
+    public int ShipLayoutVersion { get; set; } = WorldLayout.ShipLayoutVersion;
+    public int GenerationVersion { get; set; } = IslandGeneration.Version;
+    public string StartIslandId { get; set; } = "";
+    public string NearbySalvageId { get; set; } = "";
+    public string NearbyPortId { get; set; } = "";
     public int Seed { get; set; }
     public ulong RandomState { get; set; }
     public long Tick { get; set; }
@@ -52,7 +57,7 @@ public sealed class WorldState
     [JsonIgnore] public string Clock => $"Day {Day} · {Hour:00}:{(int)Minutes % 60:00}";
 }
 
-public sealed class Person
+public sealed partial class Person
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
@@ -62,8 +67,15 @@ public sealed class Person
     public int Deck { get; set; }
     public Point Position { get; set; }
     public Point Facing { get; set; } = new(0, 1);
+    public bool RunEnabled { get; set; }
     public Point Goal { get; set; }
     public string GoalPersonId { get; set; } = "";
+    public string RoutineStationId { get; set; } = "";
+    public int RoutineHour { get; set; } = -1;
+    public Point NavigationWaypoint { get; set; }
+    public Point NavigationGoal { get; set; }
+    public int NavigationDeck { get; set; }
+    public long NavigationUntil { get; set; }
     public string Activity { get; set; } = "Taking in the morning";
     public long Money { get; set; }
     public double Health { get; set; } = 100;
@@ -143,8 +155,9 @@ public sealed class Island
     public string MerchantId { get; set; } = "";
     public ItemKind Export { get; set; }
     public ItemKind Import { get; set; }
-    [JsonIgnore] public Point Landing => new(0, Radius + 18);
-    [JsonIgnore] public Point Anchorage => Position + new Point(0, Radius + 40);
+    public IslandLayout Layout { get; set; } = new();
+    [JsonIgnore] public Point Landing => Layout.Landing;
+    [JsonIgnore] public Point Anchorage => Position + Layout.Anchorage;
 }
 
 public sealed class Possession

@@ -6,6 +6,7 @@ uniform vec2 world_offset = vec2(0.0);
 uniform bool cutaway = false;
 uniform vec2 cutaway_center = vec2(0.0);
 uniform float cutaway_heading = 0.0;
+uniform vec2 cutaway_hull[9];
 varying vec2 ocean_position;
 void vertex() { ocean_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz + world_offset; }
 void fragment() {
@@ -14,8 +15,12 @@ void fragment() {
         vec2 d = p - cutaway_center;
         float c = cos(cutaway_heading), s = sin(cutaway_heading);
         vec2 deck = vec2(d.x * c - d.y * s, d.x * s + d.y * c);
-        float width = deck.y < -12.0 ? mix(0.0, 4.2, (deck.y + 17.0) / 5.0) : deck.y < -7.0 ? mix(4.2, 5.8, (deck.y + 12.0) / 5.0) : deck.y <= 8.0 ? 5.8 : mix(5.8, 4.8, (deck.y - 8.0) / 5.0);
-        if (deck.y > -17.0 && deck.y < 13.0 && abs(deck.x) < width + 0.04) discard;
+        bool inside = true;
+        for (int i = 0; i < 9; i++) {
+            vec2 a = cutaway_hull[i], edge = cutaway_hull[(i + 1) % 9] - a;
+            if (dot(deck - a, normalize(vec2(edge.y, -edge.x))) > 0.04) inside = false;
+        }
+        if (inside) discard;
     }
     float swell = sin(p.x * 0.09 + p.y * 0.14 + TIME * 0.22);
     float wave = sin(p.y * 1.25 + sin(p.x * 0.35 + TIME * 0.28) * 1.2 + TIME * 0.5);

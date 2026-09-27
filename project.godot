@@ -1,9 +1,9 @@
-; Island Glow — Alpha 0.2.0: The Living Sea
+; Island Glow — Alpha 0.3.0: First Watch
 config_version=5
 
 [application]
 config/name="Island Glow"
-config/version="0.2.0-alpha"
+config/version="0.3.0-alpha"
 run/main_scene="res://Scenes/Alpha.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 config/icon="res://Assets/pirate.svg"

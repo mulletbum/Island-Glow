@@ -56,8 +56,8 @@ try {
     # Read sharing tolerates antivirus/OneDrive readers and an executable mapping after verification.
     # Publish a complete archive atomically rather than truncating the last good ZIP first.
     Add-Type -AssemblyName System.IO.Compression
-    $finalZip = Join-Path $projectRoot 'artifacts/IslandGlow-0.2.0-alpha-win64.zip'
-    $stagingZip = Join-Path $projectRoot 'artifacts/IslandGlow-0.2.0-alpha-win64.staging.zip'
+    $finalZip = Join-Path $projectRoot 'artifacts/IslandGlow-0.3.0-alpha-win64.zip'
+    $stagingZip = Join-Path $projectRoot 'artifacts/IslandGlow-0.3.0-alpha-win64.staging.zip'
     $archiveStream = [System.IO.File]::Open($stagingZip, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
     $archiveWriter = New-Object System.IO.Compression.ZipArchive($archiveStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
     try {

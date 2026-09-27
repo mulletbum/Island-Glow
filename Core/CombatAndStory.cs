@@ -43,8 +43,13 @@ public sealed partial class AuthoritativeSession
 
     private CommandResult Shove(Person actor, string targetId)
     {
-        if (!TryNearPerson(actor, targetId, out var target) || !Ready(actor, "shove", World.Tick)) return CommandResult.Fail("No one within reach, or you need to recover.");
+        if (!TryNearPerson(actor, targetId, out var target, requireAlive: false) || !Ready(actor, "shove", World.Tick)) return CommandResult.Fail("No one within reach, or you need to recover.");
         target.Position = WorldLayout.Move(World, target, (target.Position - actor.Position).Normalized * 2.2);
+        if (!target.Alive)
+        {
+            Cooldown(actor, "shove", 30);
+            return CommandResult.Ok("The body is moved aside. Railings and solid objects stop the movement.");
+        }
         target.LastHitTick = World.Tick; target.AggressorId = actor.Id;
         var bond = Rules.Bond(World, target.Id, actor.Id); bond.Grievance = Math.Min(100, bond.Grievance + 10);
         Cooldown(actor, "shove", 30);
@@ -111,7 +116,7 @@ public sealed partial class AuthoritativeSession
         Cooldown(actor, "hail:" + target.Id, 600);
         if (target.Integrity < 30)
         {
-            var cargo = World.Items.Values.FirstOrDefault(i => i.OwnerId == target.Id && !i.Consumed && i.Kind is not (ItemKind.Food or ItemKind.Water));
+            var cargo = World.Items.Values.FirstOrDefault(i => i.OwnerId == target.Id && !i.Consumed && !CargoLoading.IsReserved(World, i.Id) && i.Kind is not (ItemKind.Food or ItemKind.Water));
             if (cargo == null) return CommandResult.Fail("They have no valuable cargo left to surrender.");
             Rules.Transfer(World, cargo, ship.Id, cargo.Quantity, "Surrendered under threat");
             if (World.People.TryGetValue(target.CaptainId, out var captain))
@@ -187,6 +192,7 @@ public sealed partial class AuthoritativeSession
             {
                 deserter.HomeShipId = ""; deserter.Role = Role.Resident; deserter.PlaceId = harbour.Id; deserter.Deck = 0;
                 deserter.Position = new(4, 16); deserter.Goal = deserter.Position; deserter.Morale = 40;
+                ClearRoutine(deserter);
                 ship.CrewIds.Remove(deserter.Id);
                 Events.Record(World, EventKind.Desertion, deserter.Id, ship.Id, $"{deserter.Name} left {ship.Name} at {harbour.Name}. Their identity and possessions remain.", true);
             }

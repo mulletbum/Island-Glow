@@ -64,7 +64,8 @@ public sealed partial class AuthoritativeSession
                 if (World.Ships.TryGetValue(target.HomeShipId, out var former)) former.CrewIds.Remove(target.Id);
                 var newShip = World.Ships[actor.HomeShipId];
                 target.HomeShipId = newShip.Id; target.Role = Role.Deckhand; newShip.CrewIds.Add(target.Id);
-                target.PlaceId = newShip.Id; target.Deck = 0; target.Position = new(2, 3); target.Goal = target.Position;
+                target.PlaceId = newShip.Id; target.Deck = 0; target.Position = WorldLayout.BoardingPosition; target.Goal = target.Position;
+                ClearRoutine(target);
                 Events.Record(World, EventKind.Recruitment, actor.Id, target.Id, $"{target.Name} signed aboard {newShip.Name}.", true);
                 message = $"{target.Name} joins the crew.";
                 break;

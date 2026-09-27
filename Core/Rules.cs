@@ -6,6 +6,7 @@ public static class Rules
     public const double TickSeconds = 1.0 / TicksPerSecond;
     public const double MinutesPerSecond = 1.2;
     public const double WalkSpeed = 4.4;
+    public const double RunSpeed = 7.2;
     public const double ShipSpeed = 23;
     public const double InteractionRange = 3.3;
     public const double WorldExtent = 11500;
@@ -75,15 +76,15 @@ public static class Rules
     {
         if (ship.Route.Count == 0) return island.Anchorage;
         int berth = ship.Id.Sum(c => (int)c) % 3;
-        return island.Anchorage + (berth == 0 ? new Point(55, 28) : berth == 1 ? new Point(-55, 28) : new Point(0, 70));
+        return island.Anchorage + (berth == 0 ? new Point(105, 55) : berth == 1 ? new Point(-105, 55) : new Point(0, 125)).Rotated(island.Layout.BerthHeading);
     }
 
     public static bool Near(Person a, Person b, double range = InteractionRange) => a.PlaceId == b.PlaceId && a.Deck == b.Deck && a.Position.Distance(b.Position) <= range;
-    public static int Stock(WorldState world, string owner, ItemKind kind) => world.Items.Values.Where(i => i.OwnerId == owner && i.Kind == kind && !i.Consumed && i.ContractId.Length == 0).Sum(i => i.Quantity);
+    public static int Stock(WorldState world, string owner, ItemKind kind) => world.Items.Values.Where(i => i.OwnerId == owner && i.Kind == kind && !i.Consumed && i.ContractId.Length == 0 && !CargoLoading.IsReserved(world, i.Id)).Sum(i => i.Quantity);
     public static bool Consume(WorldState world, string owner, ItemKind kind, int quantity)
     {
         if (quantity < 1 || Stock(world, owner, kind) < quantity) return false;
-        foreach (var item in world.Items.Values.Where(i => i.OwnerId == owner && i.Kind == kind && !i.Consumed && i.ContractId.Length == 0).ToArray())
+        foreach (var item in world.Items.Values.Where(i => i.OwnerId == owner && i.Kind == kind && !i.Consumed && i.ContractId.Length == 0 && !CargoLoading.IsReserved(world, i.Id)).ToArray())
         {
             int count = Math.Min(quantity, item.Quantity);
             item.Quantity -= count; quantity -= count;
@@ -96,6 +97,7 @@ public static class Rules
     public static Possession Transfer(WorldState world, Possession item, string to, int quantity, string reason)
     {
         if (quantity <= 0 || quantity > item.Quantity || item.Consumed) throw new InvalidOperationException("Invalid transfer quantity.");
+        if (CargoLoading.IsReserved(world, item.Id)) throw new InvalidOperationException("Physical loading cargo must be carried and stowed before it can be transferred.");
         string from = item.OwnerId;
         Possession transferred = item;
         if (quantity < item.Quantity)

@@ -2,11 +2,12 @@ namespace IslandGlow.Core;
 
 public sealed partial class AuthoritativeSession
 {
-    private static Point ConversationApproach(Person person, Person target)
+    private Point ConversationApproach(Person person, Person target)
     {
         var away = (person.Position - target.Position).Normalized;
         if (away.Length < 0.1) away = new(1, 0);
-        return target.Position + away * 1.35;
+        var goal = target.Position + away * 1.35;
+        return World.Ships.ContainsKey(person.PlaceId) ? WorldLayout.NearestShipPosition(target.Deck, goal) : goal;
     }
 
     private void ResolveObligation(Person debtor, Person creditor)

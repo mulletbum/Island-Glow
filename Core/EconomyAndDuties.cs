@@ -96,7 +96,7 @@ public sealed partial class AuthoritativeSession
     {
         if (!World.Ships.TryGetValue(actor.PlaceId, out var ship) || actor.HomeShipId != ship.Id) return CommandResult.Fail("This is not your duty station.");
         var station = WorldLayout.ShipStations.FirstOrDefault(s => s.Id == stationId && s.Deck == actor.Deck);
-        if (station == null || station.Position.Distance(actor.Position) > Rules.InteractionRange || station.Kind is not (StationKind.Swab or StationKind.Repair or StationKind.Cargo or StationKind.Cannon or StationKind.Galley))
+        if (station == null || station.Position.Distance(actor.Position) > Rules.InteractionRange || station.Kind is not (StationKind.Swab or StationKind.Repair or StationKind.Cargo or StationKind.Cannon or StationKind.Galley or StationKind.Lookout))
             return CommandResult.Fail("Move close to a work station.");
         if (!Ready(actor, "duty:" + stationId, World.Tick)) return CommandResult.Fail("This station is in good order. Try another duty or return later.");
         if (station.Kind == StationKind.Repair && Rules.Stock(World, ship.Id, ItemKind.Timber) == 0) return CommandResult.Fail("The ship needs timber for repairs.");
@@ -106,7 +106,8 @@ public sealed partial class AuthoritativeSession
 
     private CommandResult Rest(Person actor)
     {
-        if (!AtStation(actor, StationKind.Bunk) && !AtStation(actor, StationKind.Tavern)) return CommandResult.Fail("Find a hammock below deck or a tavern ashore.");
+        bool atMess = AtStation(actor, StationKind.Mess);
+        if (!AtStation(actor, StationKind.Bunk) && !AtStation(actor, StationKind.Tavern) && !atMess) return CommandResult.Fail("Find a hammock or mess bench below deck, or a tavern ashore.");
         if (World.Islands.ContainsKey(actor.PlaceId))
         {
             if (actor.Money < 20) return CommandResult.Fail("A quiet room costs twenty bronze.");
@@ -114,27 +115,29 @@ public sealed partial class AuthoritativeSession
             if (keeper == null) return CommandResult.Fail("The inn is unattended.");
             actor.Money -= 20; keeper.Money += 20;
         }
-        actor.TaskId = "rest"; actor.TaskEndTick = World.Tick + 150; actor.Activity = "Resting";
+        actor.TaskId = atMess ? "mess-rest" : "rest"; actor.TaskEndTick = World.Tick + 150; actor.Activity = atMess ? "Off watch" : "Resting";
         return CommandResult.Ok("A few quiet moments to recover.");
     }
 
     private void CompleteTask(Person actor)
     {
         string task = actor.TaskId; actor.TaskId = ""; actor.TaskEndTick = 0;
-        if (task == "rest")
+        if (task is "rest" or "mess-rest")
         {
-            actor.Fatigue = Math.Max(0, actor.Fatigue - 55); actor.Health = Math.Min(100, actor.Health + 15);
+            actor.Fatigue = Math.Max(0, actor.Fatigue - (task == "rest" ? 55 : 20)); actor.Health = Math.Min(100, actor.Health + (task == "rest" ? 15 : 0));
             actor.Morale = Math.Min(100, actor.Morale + 6); actor.Activity = "Rested";
             return;
         }
         if (!World.Ships.TryGetValue(actor.PlaceId, out var ship)) return;
-        switch (task)
+        var station = WorldLayout.ShipStations.FirstOrDefault(s => s.Id == task);
+        if (station == null) return;
+        switch (station.Kind)
         {
-            case "swab": ship.Cleanliness = Math.Min(100, ship.Cleanliness + 10); break;
-            case "repair": if (Rules.Consume(World, ship.Id, ItemKind.Timber, 1)) ship.Integrity = Math.Min(100, ship.Integrity + 12); break;
-            case "cargo": ship.Morale = Math.Min(100, ship.Morale + 2); break;
-            case "cannon": ship.NextCannonTick = Math.Min(ship.NextCannonTick, World.Tick); break;
-            case "galley": actor.Hunger = Math.Max(0, actor.Hunger - 10); break;
+            case StationKind.Swab: ship.Cleanliness = Math.Min(100, ship.Cleanliness + 10); break;
+            case StationKind.Repair: if (Rules.Consume(World, ship.Id, ItemKind.Timber, 1)) ship.Integrity = Math.Min(100, ship.Integrity + 12); break;
+            case StationKind.Cargo: ship.Morale = Math.Min(100, ship.Morale + 2); break;
+            case StationKind.Cannon: ship.NextCannonTick = Math.Min(ship.NextCannonTick, World.Tick); break;
+            case StationKind.Galley: ship.Morale = Math.Min(100, ship.Morale + 2); break;
         }
         long pay = Math.Min(ship.Treasury, 18);
         ship.Treasury -= pay; actor.Money += pay; actor.Reputation += 2; actor.Morale = Math.Min(100, actor.Morale + 2);
