@@ -2,9 +2,9 @@
 
 ## Read first
 
-Read [GAME_DESIGN.md](docs/GAME_DESIGN.md), [ARCHITECTURE.md](docs/ARCHITECTURE.md), and [ROADMAP.md](docs/ROADMAP.md) before changing the project. The original ZIP recorded the **Pirate Video Game** design conversation. The workspace now contains alpha 0.2 and the preserved 0.1.0 comparison scene; see [README.md](README.md) for setup and verification.
+Read [GAME_DESIGN.md](docs/GAME_DESIGN.md), [ARCHITECTURE.md](docs/ARCHITECTURE.md), and [ROADMAP.md](docs/ROADMAP.md) before changing the project. The original ZIP recorded the **Pirate Video Game** design conversation. The workspace now contains alpha 0.3.0 and the preserved 0.1.0 comparison scene; see [README.md](README.md) for setup and verification.
 
-The repository is `mulletbum/Island-Glow` (corrected by Andrew on 2026-09-27). The signed-in browser confirmed it was private and empty during local setup; Git and connector authentication were unavailable. Inspect for subsequent changes before publishing. Use Island Glow / Island-Glow rather than the earlier illustrative name Blackwake.
+The repository is `mulletbum/Island-Glow` (corrected by Andrew on 2026-09-27). Initial authentication failures were resolved: Andrew authorized publishing on 2026-09-27, and the verified alpha 0.3.0 source checkpoint was pushed to `main`. Fetch and inspect for subsequent changes before future pushes. Use Island Glow / Island-Glow rather than the earlier illustrative name Blackwake.
 
 ## Established rules
 

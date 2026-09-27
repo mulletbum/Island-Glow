@@ -15,7 +15,7 @@ Alpha 0.3.0 is ready for Andrew's playtest. VERIFICATION.md records the final pa
 - Source: Play.cmd or Run.ps1. Package: Build-Alpha.ps1. Original scene: Run.ps1 -Prototype.
 - Godot 4.7.2 .NET; SDK 8.0.425 in ignored .tools; packaged runtime 8.0.31 needs no SDK.
 - Workspace: C:/Users/Andrew/OneDrive/Desktop/Codex/Island Glow.
-- Source is the dirty working tree on main, based on 8b7ec4b8db9bfd4601bd7d5aa6ae4d3324e9ce40. Local packaging does not imply a commit/push.
+- Alpha 0.3.0 source checkpoint: ba570ad67e7cba481a2ed3ab3e2f1f87aad52c74, published to GitHub main on 2026-09-27. Later publication-status commits change documentation only. The archived source ZIP predates those status updates.
 
 ## First Watch
 
@@ -53,7 +53,9 @@ Historical 0.2.1 evidence includes a ten-day integrity soak and local 100-person
 
 ## Publication and next work
 
-Destination: https://github.com/mulletbum/island-glow. Origin is configured. Setup found a private empty repository through signed-in Chrome, but Git/app authentication failed. Nothing has been pushed. Inspect/fetch before publishing once authenticated; do not overwrite subsequent remote work. A002 tracks the blocker.
+Repository: https://github.com/mulletbum/Island-Glow. Andrew requested a push before taking a break on 2026-09-27. Git authentication now works; fetch/ls-remote confirmed the remote was still empty before the first push. The source checkpoint ba570ad was pushed to main, tracking origin/main, and its full hash was verified against the remote. A002 is resolved. Tools, saves and compiled artifacts remain ignored; this was a source push, not a GitHub binary release. Fetch and inspect before future pushes, preserving subsequent remote work.
+
+Andrew is taking a break. Stop new gameplay work until he resumes; the next playtest priorities below remain the handoff.
 
 Read AGENTS, GAME_DESIGN, ARCHITECTURE, ROADMAP and current memory/decisions/issues when resuming. VERIFICATION contains evidence; BUILDOUT and MULTIPLAYER map extensions. Historical handoffs are under docs/reference/.
 

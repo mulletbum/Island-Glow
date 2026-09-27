@@ -59,6 +59,6 @@ See [verification](docs/VERIFICATION.md) for actual results, [architecture](docs
 
 ## Repository and handoff
 
-Target: [mulletbum/island-glow](https://github.com/mulletbum/island-glow). Local Git has this remote configured. Publishing status is tracked in `MEMORY.md`; the private remote lacked usable Git credentials during initial work. Local artifacts are not evidence of a push.
+Source: [mulletbum/Island-Glow](https://github.com/mulletbum/Island-Glow), branch `main`. Alpha 0.3.0 was pushed on 2026-09-27 after Andrew's authorization; the remote commit was verified. `MEMORY.md` records the checkpoint. Compiled review builds remain local under ignored `artifacts/`; use the source setup/build steps above on another PC.
 
 Read `AGENTS.md` and `MEMORY.md` when resuming. The design source is `docs/GAME_DESIGN.md`; historical architecture/roadmap/prototype verification are preserved under `docs/reference/`. Current decisions live in `docs/DECISIONS.md`, concrete remaining work in `docs/ISSUES.md`. Tool downloads, generated artifacts, saves and the original ZIP are excluded from source control.
