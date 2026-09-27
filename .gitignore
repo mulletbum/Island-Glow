@@ -1,0 +1,8 @@
+.godot/
+.tools/
+artifacts/
+bin/
+obj/
+*.user
+*.zip
+.DS_Store

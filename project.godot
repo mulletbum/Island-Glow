@@ -1,0 +1,32 @@
+; Island Glow — Alpha 0.2.0: The Living Sea
+config_version=5
+
+[application]
+config/name="Island Glow"
+config/version="0.2.0-alpha"
+run/main_scene="res://Scenes/Alpha.tscn"
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
+config/icon="res://Assets/pirate.svg"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/size/min_width=800
+window/size/min_height=600
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[dotnet]
+project/assembly_name="IslandGlow"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.055, 0.22, 0.27, 1)
+
+[physics]
+common/physics_ticks_per_second=60
